@@ -31,6 +31,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
 package com.qualcomm.ftcrobotcontroller.opmodes;
 
+import android.text.StaticLayout;
+
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -45,42 +47,64 @@ public class K9TeleOp extends OpMode {
 
 	/*
 	 * Note: the configuration of the servos is such that
-	 * as the arm servo approaches 0, the arm position moves up (away from the floor).
-	 * Also, as the claw servo approaches 0, the claw opens up (drops the game element).
+	 * as the rightArm servo approaches 0, the rightArm position moves up (away from the floor).
+	 * Also, as the plow servo approaches 0, the plow opens up (drops the game element).
 	 */
 	// TETRIX VALUES.
-	final static double ARM_MIN_RANGE  = 0.20;
-	final static double ARM_MAX_RANGE  = 0.90;
-	final static double CLAW_MIN_RANGE  = 0.20;
-	final static double CLAW_MAX_RANGE  = 0.7;
+	//final static double RIGHT_ARM_MIN_RANGE  = 0.50;
+	//final static double RIGHT_ARM_MAX_RANGE  = 1.0;
+	// final static double LEFT_ARM_MIN_RANGE = 0.40;
+	// final static double LEFT_ARM_MAX_RANGE = 1.0;
+	final static double PLOW_MIN_RANGE  = 0.0;
+	final static double PLOW_MAX_RANGE  = 1.0;
+	final static double CRANE_MIN_RANGE = 0.25;
+	final static double CRANE_MAX_RANGE = 1.0;
 
-	// position of the arm servo.
-	double armPosition;
 
-	// amount to change the arm servo position.
-	double armDelta = 0.1;
 
-	// position of the claw servo
-	double clawPosition;
+	//position of the crane
+	double cranePosition;
 
-	// amount to change the claw servo position by
-	double clawDelta = 0.1;
+	//amount to change the crane servo position
+	double craneDelta = 0.1;
 
-	DcMotor motorRight;
-	DcMotor motorLeft;
-	Servo claw;
-	Servo arm;
+	// position of the rightArm servo.
+	//double rightArmPosition;
+
+	// position of the leftArm servo.
+	//   double leftArmPosition;
+
+	// amount to change the rightArm servo position.
+	//double rightArmDelta = 0.1;
+
+	//amount to change the leftArm servo position
+	// double leftArmDelta = 0.1;
+
+	// position of the plow servo
+	double plowPosition;
+
+	// amount to change the plow servo position by
+	double plowDelta = 0.1;
+
+	DcMotor backMotorRight;
+	DcMotor backMotorLeft;
+	DcMotor frontMotorRight;
+	DcMotor frontMotorLeft;
+	Servo plow;
+	//Servo rightArm;
+	//Servo leftArm;
+	Servo crane;
+
 
 	/**
 	 * Constructor
 	 */
 	public K9TeleOp() {
-
 	}
 
 	/*
 	 * Code to run when the op mode is first enabled goes here
-	 *
+	 * 
 	 * @see com.qualcomm.robotcore.eventloop.opmode.OpMode#start()
 	 */
 	@Override
@@ -92,32 +116,40 @@ public class K9TeleOp extends OpMode {
 		 * that the names of the devices must match the names used when you
 		 * configured your robot and created the configuration file.
 		 */
-
+		
 		/*
 		 * For the demo Tetrix K9 bot we assume the following,
 		 *   There are two motors "motor_1" and "motor_2"
 		 *   "motor_1" is on the right side of the bot.
 		 *   "motor_2" is on the left side of the bot and reversed.
-		 *
+		 *   
 		 * We also assume that there are two servos "servo_1" and "servo_6"
-		 *    "servo_1" controls the arm joint of the manipulator.
-		 *    "servo_6" controls the claw joint of the manipulator.
+		 *    "servo_1" controls the rightArm joint of the manipulator.
+		 *    "servo_6" controls the plow joint of the manipulator.
 		 */
-		motorRight = hardwareMap.dcMotor.get("motor_2");
-		motorLeft = hardwareMap.dcMotor.get("motor_1");
-		motorLeft.setDirection(DcMotor.Direction.REVERSE);
+		backMotorRight = hardwareMap.dcMotor.get("back_right_drive");
+		backMotorLeft = hardwareMap.dcMotor.get("back_left_drive");
+		frontMotorRight = hardwareMap.dcMotor.get("front_right_drive");
+		frontMotorLeft = hardwareMap.dcMotor.get("front_left_drive");
 
-		arm = hardwareMap.servo.get("servo_1");
-		claw = hardwareMap.servo.get("servo_6");
+		backMotorLeft.setDirection(DcMotor.Direction.REVERSE);
+		frontMotorLeft.setDirection(DcMotor.Direction.REVERSE);
 
-		// assign the starting position of the wrist and claw
-		armPosition = 0.2;
-		clawPosition = 0.2;
+		crane = hardwareMap.servo.get("crane"); //servo 6
+		//leftArm = hardwareMap.servo.get("left_arm"); //servo 3
+		//rightArm = hardwareMap.servo.get("right_arm"); //servo 2
+		plow = hardwareMap.servo.get("plow"); //servo 1
+
+		// assign the starting position of the wrist and plow
+		//rightArmPosition = 1.0;
+		//leftArmPosition = 0.0;
+		cranePosition = 1.0;
+		plowPosition = 0.52;
 	}
 
 	/*
 	 * This method will be called repeatedly in a loop
-	 *
+	 * 
 	 * @see com.qualcomm.robotcore.eventloop.opmode.OpMode#run()
 	 */
 	@Override
@@ -125,17 +157,19 @@ public class K9TeleOp extends OpMode {
 
 		/*
 		 * Gamepad 1
-		 *
-		 * Gamepad 1 controls the motors via the left stick, and it controls the
-		 * wrist/claw via the a,b, x, y buttons
+		 * 
+		 * Gamepad 1 controls the motors via the left stick, and Gamepad 2 controls the
+		 * plow via the dpad up/down buttons
+		 * and the arms by the x,y,a,b buttons
+		 * and the crane by the left bumper and the right bumper.
 		 */
 
 		// throttle: left_stick_y ranges from -1 to 1, where -1 is full up, and
 		// 1 is full down
 		// direction: left_stick_x ranges from -1 to 1, where -1 is full left
 		// and 1 is full right
-		float throttle = -gamepad1.left_stick_y;
-		float direction = gamepad1.left_stick_x;
+		float throttle = gamepad1.left_stick_y;
+		float direction = -gamepad1.left_stick_x;
 		float right = throttle - direction;
 		float left = throttle + direction;
 
@@ -149,38 +183,76 @@ public class K9TeleOp extends OpMode {
 		left =  (float)scaleInput(left);
 
 		// write the values to the motors
-		motorRight.setPower(right);
-		motorLeft.setPower(left);
+		backMotorRight.setPower(right);
+		frontMotorRight.setPower(-right);
+		backMotorLeft.setPower(left);
+		frontMotorLeft.setPower(-left);
 
-		// update the position of the arm.
-		if (gamepad1.a) {
+		// update the position of the rightArm.
+		if (gamepad2.a) {
 			// if the A button is pushed on gamepad1, increment the position of
-			// the arm servo.
-			armPosition += armDelta;
+			// the rightArm servo.
+			//rightArmPosition += rightArmDelta;
 		}
 
-		if (gamepad1.y) {
+		if (gamepad2.b) {
 			// if the Y button is pushed on gamepad1, decrease the position of
-			// the arm servo.
-			armPosition -= armDelta;
+			// the rightArm servo.
+			//rightArmPosition -= rightArmDelta;
 		}
 
-		// update the position of the claw
-		if (gamepad1.x) {
-			clawPosition += clawDelta;
+		//update the position of the left arm
+		if (gamepad2.y)
+		{
+			// leftArmPosition += leftArmDelta;
+		}
+		if (gamepad2.x)
+		{
+			// leftArmPosition -= leftArmDelta;
 		}
 
-		if (gamepad1.b) {
-			clawPosition -= clawDelta;
+		// update the position of the plow
+		if (gamepad2.dpad_up) {
+			plowPosition += plowDelta;
 		}
 
-        // clip the position values so that they never exceed their allowed range.
-        armPosition = Range.clip(armPosition, ARM_MIN_RANGE, ARM_MAX_RANGE);
-        clawPosition = Range.clip(clawPosition, CLAW_MIN_RANGE, CLAW_MAX_RANGE);
+		if (gamepad2.dpad_down) {
+			plowPosition = 0.52;
+		}
 
-		// write position values to the wrist and claw servo
-		arm.setPosition(armPosition);
-		claw.setPosition(clawPosition);
+		//update the position of the crane
+		if ((gamepad2.left_bumper))
+		{
+			cranePosition += craneDelta;
+		}
+		if (gamepad2.right_bumper)
+		{
+			cranePosition -= craneDelta;
+		}
+
+		//drop the plow to the floor
+		if(gamepad1.left_bumper)
+		{
+			plowPosition = 0.0;
+		}
+		//raise it al the way up.
+		if (gamepad1.right_bumper)
+		{
+			plowPosition = 1.0;
+		}
+
+
+		// clip the position values so that they never exceed their allowed range.
+		// rightArmPosition = Range.clip(rightArmPosition, RIGHT_ARM_MIN_RANGE, RIGHT_ARM_MAX_RANGE);
+		// leftArmPosition = Range.clip(leftArmPosition, LEFT_ARM_MIN_RANGE, LEFT_ARM_MAX_RANGE);
+		plowPosition = Range.clip(plowPosition, PLOW_MIN_RANGE, PLOW_MAX_RANGE);
+		cranePosition = Range.clip(cranePosition, CRANE_MIN_RANGE,CRANE_MAX_RANGE);
+
+		// write position values to the wrist and plow servo
+		//	rightArm.setPosition(rightArmPosition);
+		//  leftArm.setPosition(leftArmPosition);
+		plow.setPosition(plowPosition);
+		crane.setPosition(cranePosition);
 
 
 
@@ -190,17 +262,19 @@ public class K9TeleOp extends OpMode {
 		 * will return a null value. The legacy NXT-compatible motor controllers
 		 * are currently write only.
 		 */
-        telemetry.addData("Text", "*** Robot Data***");
-        telemetry.addData("arm", "arm:  " + String.format("%.2f", armPosition));
-        telemetry.addData("claw", "claw:  " + String.format("%.2f", clawPosition));
+        /*telemetry.addData("Text", "*** Robot Data***");
+      //  telemetry.addData("rightArm", "rightArm:  " + String.format("%.2f", rightArmPosition));
+       // telemetry.addData("leftArm", "leftArm:  " + String.format("%.2f",leftArmPosition));
+        telemetry.addData("plow", "plow:  " + String.format("%.2f", plowPosition));
         telemetry.addData("left tgt pwr",  "left  pwr: " + String.format("%.2f", left));
         telemetry.addData("right tgt pwr", "right pwr: " + String.format("%.2f", right));
+        telemetry.addData("crane", "crane: " + String.format("%.2f", cranePosition));*/
 
 	}
 
 	/*
 	 * Code to run when the op mode is first disabled goes here
-	 *
+	 * 
 	 * @see com.qualcomm.robotcore.eventloop.opmode.OpMode#stop()
 	 */
 	@Override
@@ -210,7 +284,7 @@ public class K9TeleOp extends OpMode {
 
 
 	/*
-	 * This method scales the joystick input so for low joystick values, the
+	 * This method scales the joystick input so for low joystick values, the 
 	 * scaled value is less than linear.  This is to make it easier to drive
 	 * the robot more precisely at slower speeds.
 	 */
