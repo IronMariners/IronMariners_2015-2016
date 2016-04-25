@@ -81,6 +81,19 @@ public class JoshVManual extends OpMode {
         plowPosition = 0.52;
     }
 
+    float prevRightRotation;
+    float prevLeftRotation;
+
+    private boolean isMoving(float rightRotation, float leftRotation)
+    {
+        return rightRotation > 0 || leftRotation > 0
+    }
+
+    private boolean isDecelerating(float rightRotation, float leftRotation)
+    {
+        return rightRotation < this.prevRightRotation || leftRotation < this.prevLeftRotation;
+    }
+
     @Override
     public void loop()
     {
@@ -95,7 +108,7 @@ public class JoshVManual extends OpMode {
 
         rightRotation = (float)scaleInput(leftRotation);
         leftRotation =  (float)scaleInput(leftRotation);
-
+        this.getRuntime();
         backMotorRight.setPower(-rightRotation);
         frontMotorRight.setPower(-rightRotation);
         backMotorLeft.setPower(-leftRotation);
@@ -133,6 +146,9 @@ public class JoshVManual extends OpMode {
 
         plow.setPosition(plowPosition);
         crane.setPosition(cranePosition);
+
+        this.prevLeftRotation = rightRotation;
+        this.prevLeftRotation = leftRotation;
     }
 
     @Override
