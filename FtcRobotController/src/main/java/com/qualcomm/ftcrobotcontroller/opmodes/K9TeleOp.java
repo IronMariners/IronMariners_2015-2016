@@ -57,7 +57,7 @@ public class K9TeleOp extends OpMode {
 	// final static double LEFT_ARM_MAX_RANGE = 1.0;
 	final static double PLOW_MIN_RANGE  = 0.0;
 	final static double PLOW_MAX_RANGE  = 1.0;
-	final static double CRANE_MIN_RANGE = 0.25;
+	final static double CRANE_MIN_RANGE = 0.20;
 	final static double CRANE_MAX_RANGE = 1.0;
 
 
@@ -183,9 +183,9 @@ public class K9TeleOp extends OpMode {
 		left =  (float)scaleInput(left);
 
 		// write the values to the motors
-		backMotorRight.setPower(right);
+		backMotorRight.setPower(-right);
 		frontMotorRight.setPower(-right);
-		backMotorLeft.setPower(left);
+		backMotorLeft.setPower(-left);
 		frontMotorLeft.setPower(-left);
 
 		// update the position of the rightArm.
